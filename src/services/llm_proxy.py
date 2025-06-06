@@ -2,7 +2,7 @@ import httpx
 from typing import Dict, Any, List, AsyncGenerator
 import json
 import logging
-from api.models import (
+from src.api.models import (
     ChatCompletionRequest, 
     ChatCompletionResponse, 
     ChatMessage,

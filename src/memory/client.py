@@ -1,7 +1,7 @@
 from mem0 import Memory
 import os
 from typing import Optional
-from config.settings import settings
+from src.config.settings import settings
 
 
 class Mem0Client:

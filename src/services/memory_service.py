@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 import logging
-from memory.manager import memory_manager
-from api.models import ChatMessage
+from src.memory.manager import memory_manager
+from src.api.models import ChatMessage
 
 
 logger = logging.getLogger(__name__)
@@ -145,11 +145,13 @@ class MemoryService:
             用户记忆列表
         """
         try:
+            logger.info(f"Getting memories for user_id: {user_id}")
             memories = await self.memory_manager.get_all_memories(user_id)
             logger.info(f"Retrieved {len(memories)} memories for user {user_id}")
+            logger.debug(f"Memory details: {memories}")
             return memories
         except Exception as e:
-            logger.error(f"Error retrieving memories: {e}")
+            logger.error(f"Error retrieving memories for user {user_id}: {e}")
             return []
     
     async def delete_all_user_memories(self, user_id: str = "default") -> Dict[str, Any]:

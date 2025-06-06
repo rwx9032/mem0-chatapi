@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
-from memory.client import mem0_client
+from src.memory.client import mem0_client
 
 
 logger = logging.getLogger(__name__)
@@ -25,12 +25,13 @@ class MemoryManager:
             保存结果
         """
         try:
+            logger.info(f"Saving memory for user_id: {user_id}, content: {text[:100]}...")
             messages = [{"role": "user", "content": text}]
             result = self.client.add(messages, user_id=user_id)
-            logger.info(f"Successfully saved memory for user {user_id}")
+            logger.info(f"Mem0 save result for user {user_id}: {result}")
             return {"success": True, "result": result}
         except Exception as e:
-            logger.error(f"Error saving memory: {e}")
+            logger.error(f"Error saving memory for user {user_id}: {e}")
             return {"success": False, "error": str(e)}
     
     async def search_memories(self, query: str, user_id: str = "default", limit: int = 5) -> List[str]:
@@ -90,19 +91,24 @@ class MemoryManager:
             所有记忆列表
         """
         try:
+            logger.info(f"Calling Mem0 client.get_all with user_id: {user_id}")
             memories = self.client.get_all(user_id=user_id)
+            logger.info(f"Mem0 client returned: {type(memories)}, content: {memories}")
             
             # 处理返回格式
             if isinstance(memories, dict) and "results" in memories:
-                return [memory["memory"] for memory in memories["results"]]
+                result = [memory["memory"] for memory in memories["results"]]
+                logger.info(f"Extracted {len(result)} memories from dict format")
+                return result
             elif isinstance(memories, list):
+                logger.info(f"Got {len(memories)} memories in list format")
                 return memories
             else:
-                logger.warning(f"Unexpected memory format: {type(memories)}")
+                logger.warning(f"Unexpected memory format: {type(memories)}, content: {memories}")
                 return []
                 
         except Exception as e:
-            logger.error(f"Error retrieving all memories: {e}")
+            logger.error(f"Error retrieving all memories for user {user_id}: {e}")
             return []
     
     async def enhance_context_with_memories(

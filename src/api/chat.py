@@ -4,15 +4,16 @@ from typing import Optional
 import time
 import uuid
 import logging
-from api.models import (
+from src.api.models import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     TokenInfo,
     MemoryResponse
 )
-from api.middleware import optional_token_auth, required_token_auth, simple_token_auth
-from services.llm_proxy import llm_proxy_service
-from services.memory_service import memory_service
+from src.api.middleware import optional_token_auth, required_token_auth, simple_token_auth
+from src.services.auth_service import verify_chat_token, optional_chat_auth
+from src.services.llm_proxy import llm_proxy_service
+from src.services.memory_service import memory_service
 
 
 logger = logging.getLogger(__name__)
@@ -22,21 +23,20 @@ router = APIRouter()
 @router.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completions(
     request: ChatCompletionRequest,
-    token_info: TokenInfo = Depends(optional_token_auth)
+    token_info: TokenInfo = Depends(verify_chat_token)
 ):
     """
     OpenAI 兼容的聊天完成 API
     """
-    if not token_info:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    
     try:
-        logger.info(f"Processing chat completion request for user: {request.user_id}")
+        # 从 token_info 中获取 user_id (env_token 字段包含 user_id)
+        user_id = token_info.env_token  
+        logger.info(f"Processing chat completion request for user: {user_id}")
         
         # 使用记忆增强消息
         enhanced_messages = await memory_service.enhance_messages_with_memory(
             request.messages,
-            request.user_id,
+            user_id,
             request.enable_memory
         )
         
@@ -48,7 +48,7 @@ async def chat_completions(
         if request.stream:
             # 流式响应
             return StreamingResponse(
-                _stream_chat_completion(enhanced_request, token_info, request.user_id, request.enable_memory),
+                _stream_chat_completion(enhanced_request, token_info, user_id, request.enable_memory),
                 media_type="text/plain",
                 headers={
                     "Cache-Control": "no-cache",
@@ -66,7 +66,7 @@ async def chat_completions(
                 await memory_service.save_conversation_memory(
                     request.messages,
                     response_content,
-                    request.user_id,
+                    user_id,
                     request.enable_memory
                 )
             
@@ -119,7 +119,7 @@ async def _stream_chat_completion(
 
 
 @router.get("/v1/models")
-async def list_models(token_info: TokenInfo = Depends(optional_token_auth)):
+async def list_models(token_info: TokenInfo = Depends(optional_chat_auth)):
     """
     列出可用模型（兼容 OpenAI API）
     """
@@ -137,91 +137,3 @@ async def list_models(token_info: TokenInfo = Depends(optional_token_auth)):
             }
         ]
     }
-
-
-# 记忆管理 API
-@router.post("/v1/memory/save", response_model=MemoryResponse)
-async def save_memory(
-    content: str,
-    user_id: str = "default",
-    env_token: str = Depends(simple_token_auth)
-):
-    """保存记忆"""
-    try:
-        result = await memory_service.save_user_memory(content, user_id)
-        return MemoryResponse(
-            success=result.get("success", False),
-            message="Memory saved successfully" if result.get("success") else "Failed to save memory",
-            data=result
-        )
-    except Exception as e:
-        logger.error(f"Save memory error: {e}")
-        return MemoryResponse(
-            success=False,
-            message=f"Error saving memory: {str(e)}"
-        )
-
-
-@router.get("/v1/memory/search", response_model=MemoryResponse)
-async def search_memories(
-    query: str,
-    user_id: str = "default",
-    limit: int = 5,
-    env_token: str = Depends(simple_token_auth)
-):
-    """搜索记忆"""
-    try:
-        memories = await memory_service.search_user_memories(query, user_id, limit)
-        return MemoryResponse(
-            success=True,
-            message=f"Found {len(memories)} memories",
-            data=memories
-        )
-    except Exception as e:
-        logger.error(f"Search memories error: {e}")
-        return MemoryResponse(
-            success=False,
-            message=f"Error searching memories: {str(e)}"
-        )
-
-
-@router.get("/v1/memory/list", response_model=MemoryResponse)
-async def list_memories(
-    user_id: str = "default",
-    env_token: str = Depends(simple_token_auth)
-):
-    """获取所有记忆"""
-    try:
-        memories = await memory_service.get_user_memories(user_id)
-        return MemoryResponse(
-            success=True,
-            message=f"Retrieved {len(memories)} memories",
-            data=memories
-        )
-    except Exception as e:
-        logger.error(f"List memories error: {e}")
-        return MemoryResponse(
-            success=False,
-            message=f"Error retrieving memories: {str(e)}"
-        )
-
-
-@router.delete("/v1/memory/clear", response_model=MemoryResponse)
-async def clear_memories(
-    user_id: str = "default",
-    env_token: str = Depends(simple_token_auth)
-):
-    """清空所有记忆"""
-    try:
-        result = await memory_service.delete_all_user_memories(user_id)
-        return MemoryResponse(
-            success=result.get("success", False),
-            message="All memories cleared successfully" if result.get("success") else "Failed to clear memories",
-            data=result
-        )
-    except Exception as e:
-        logger.error(f"Clear memories error: {e}")
-        return MemoryResponse(
-            success=False,
-            message=f"Error clearing memories: {str(e)}"
-        )

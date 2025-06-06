@@ -2,9 +2,9 @@ from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import logging
-from config.token_parser import TokenParser
-from config.settings import settings
-from api.models import TokenInfo
+from src.config.token_parser import TokenParser
+from src.config.settings import settings
+from src.api.models import TokenInfo
 
 
 logger = logging.getLogger(__name__)

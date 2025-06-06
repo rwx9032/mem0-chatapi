@@ -8,6 +8,11 @@ class ChatMessage(BaseModel):
     content: str = Field(..., description="消息内容")
 
 
+class SaveMemoryRequest(BaseModel):
+    """保存记忆请求模型"""
+    content: str = Field(..., description="要保存的记忆内容")
+
+
 class ChatCompletionRequest(BaseModel):
     """Chat Completion 请求模型"""
     model: str = Field(..., description="使用的模型名称")
