@@ -1,7 +1,9 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
+import os
 from src.memory.client import mem0_client
+from src.config.settings import settings
 
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,23 @@ class MemoryManager:
     """记忆管理器"""
     
     def __init__(self):
+        # 确保API密钥正确设置
+        self._ensure_api_keys()
         self.client = mem0_client.get_client()
+    
+    def _ensure_api_keys(self):
+        """确保API密钥环境变量正确设置"""
+        from dotenv import load_dotenv
+        load_dotenv('.env', override=True)
+        
+        # 禁用 PostHog 遥测
+        os.environ["POSTHOG_DISABLED"] = "true"
+        
+        api_key = os.getenv('LLM_API_KEY')
+        if api_key and settings.llm_provider.lower() in ["gemini", "google"]:
+            # 根据Mem0文档：LLM用GEMINI_API_KEY，Embedding用GOOGLE_API_KEY
+            os.environ["GEMINI_API_KEY"] = api_key
+            os.environ["GOOGLE_API_KEY"] = api_key
     
     async def save_memory(self, text: str, user_id: str = "default") -> Dict[str, Any]:
         """
@@ -25,13 +43,12 @@ class MemoryManager:
             保存结果
         """
         try:
-            logger.info(f"Saving memory for user_id: {user_id}, content: {text[:100]}...")
             messages = [{"role": "user", "content": text}]
             result = self.client.add(messages, user_id=user_id)
-            logger.info(f"Mem0 save result for user {user_id}: {result}")
+            logger.info(f"Successfully saved memory for user {user_id}")
             return {"success": True, "result": result}
         except Exception as e:
-            logger.error(f"Error saving memory for user {user_id}: {e}")
+            logger.error(f"Error saving memory: {e}")
             return {"success": False, "error": str(e)}
     
     async def search_memories(self, query: str, user_id: str = "default", limit: int = 5) -> List[str]:

@@ -20,7 +20,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # 添加用户管理相关的数据模型
 class CreateUserRequest(BaseModel):
     username: str
-    user_token: str
+    user_token: Optional[str] = None
 
 class UpdateUserTokenRequest(BaseModel):
     new_token: str
@@ -301,14 +301,17 @@ async def admin_dashboard():
                         // 添加用户表单
                         html += `<div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
                             <h4>➕ 创建新用户</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+                            <div style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 1rem; align-items: end;">
                                 <div>
                                     <label>用户名:</label>
                                     <input type="text" id="newUsername" placeholder="输入用户名" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                                 <div>
-                                    <label>用户Token:</label>
-                                    <input type="text" id="newUserToken" placeholder="输入用户token" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                                    <label>用户Token <span style="color: #666; font-size: 0.85em;">(可选，留空自动生成)</span>:</label>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <input type="text" id="newUserToken" placeholder="留空自动生成 Mem 开头的token" style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                                        <button onclick="generateAndFillToken()" style="background: #74b9ff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; white-space: nowrap;">生成Token</button>
+                                    </div>
                                 </div>
                                 <button onclick="createUser()" style="background: #00b894; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;">创建用户</button>
                             </div>
@@ -316,15 +319,15 @@ async def admin_dashboard():
                         
                         // 用户列表表格
                         html += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-                        html += '<tr style="background: #f8f9fa;"><th style="padding: 1rem; border: 1px solid #ddd;">用户ID</th><th style="padding: 1rem; border: 1px solid #ddd;">用户名</th><th style="padding: 1rem; border: 1px solid #ddd;">Token</th><th style="padding: 1rem; border: 1px solid #ddd;">记忆数量</th><th style="padding: 1rem; border: 1px solid #ddd;">最后活动</th><th style="padding: 1rem; border: 1px solid #ddd;">操作</th></tr>';
+                        html += '<tr style="background: #f8f9fa;"><th style="padding: 1rem; border: 1px solid #ddd;">用户ID</th><th style="padding: 1rem; border: 1px solid #ddd;">用户名</th><th style="padding: 1rem; border: 1px solid #ddd; min-width: 200px;">Token</th><th style="padding: 1rem; border: 1px solid #ddd;">记忆数量</th><th style="padding: 1rem; border: 1px solid #ddd;">最后活动</th><th style="padding: 1rem; border: 1px solid #ddd;">操作</th></tr>';
                         
                         users.forEach(user => {
                             html += `<tr>
                                 <td style="padding: 1rem; border: 1px solid #ddd;">${user.user_id}</td>
                                 <td style="padding: 1rem; border: 1px solid #ddd;">${user.username || 'N/A'}</td>
                                 <td style="padding: 1rem; border: 1px solid #ddd;">
-                                    <code style="background: #e9ecef; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.8rem;">
-                                        ${user.user_token ? user.user_token.substring(0, 20) + '...' : 'N/A'}
+                                    <code style="background: #e9ecef; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.8rem; word-break: break-all; white-space: normal; display: block; width: 100%;">
+                                        ${user.user_token || 'N/A'}
                                     </code>
                                 </td>
                                 <td style="padding: 1rem; border: 1px solid #ddd;">${user.memory_count}</td>
@@ -345,13 +348,36 @@ async def admin_dashboard():
                 }
             }
             
+            function generateToken() {
+                // 生成以 "Mem" 开头的16字符随机token
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                let result = 'Mem';
+                for (let i = 0; i < 13; i++) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return result;
+            }
+
+            function generateAndFillToken() {
+                // 手动生成token并填入输入框
+                const token = generateToken();
+                document.getElementById('newUserToken').value = token;
+            }
+
             async function createUser() {
                 const username = document.getElementById('newUsername').value.trim();
-                const userToken = document.getElementById('newUserToken').value.trim();
+                let userToken = document.getElementById('newUserToken').value.trim();
                 
-                if (!username || !userToken) {
-                    alert('请输入用户名和token');
+                if (!username) {
+                    alert('请输入用户名');
                     return;
+                }
+                
+                // 如果没有填写token，自动生成一个
+                if (!userToken) {
+                    userToken = generateToken();
+                    document.getElementById('newUserToken').value = userToken;
+                    console.log('自动生成Token:', userToken);
                 }
                 
                 try {
@@ -538,6 +564,8 @@ async def list_users(admin_token: str = Depends(verify_admin_token)):
         return [
             {
                 "user_id": user.user_id,
+                "username": user.username,
+                "user_token": user.user_token,
                 "memory_count": user.memory_count,
                 "last_activity": user.last_activity
             }

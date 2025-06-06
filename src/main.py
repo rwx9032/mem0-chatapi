@@ -5,7 +5,12 @@ import time
 import logging
 import asyncio
 import uvicorn
+import os
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# 强制加载环境变量
+load_dotenv('.env', override=True)
 
 # 导入配置和工具
 from src.config.settings import settings

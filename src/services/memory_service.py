@@ -35,7 +35,7 @@ class MemoryService:
         
         try:
             # 转换为字典格式
-            message_dicts = [msg.dict() for msg in messages]
+            message_dicts = [msg.model_dump() for msg in messages]
             
             # 使用记忆管理器增强上下文
             enhanced_message_dicts = await self.memory_manager.enhance_context_with_memories(
@@ -74,7 +74,7 @@ class MemoryService:
         
         try:
             # 转换为字典格式
-            message_dicts = [msg.dict() for msg in messages]
+            message_dicts = [msg.model_dump() for msg in messages]
             
             # 保存对话
             await self.memory_manager.save_conversation(
@@ -145,13 +145,11 @@ class MemoryService:
             用户记忆列表
         """
         try:
-            logger.info(f"Getting memories for user_id: {user_id}")
             memories = await self.memory_manager.get_all_memories(user_id)
             logger.info(f"Retrieved {len(memories)} memories for user {user_id}")
-            logger.debug(f"Memory details: {memories}")
             return memories
         except Exception as e:
-            logger.error(f"Error retrieving memories for user {user_id}: {e}")
+            logger.error(f"Error retrieving memories: {e}")
             return []
     
     async def delete_all_user_memories(self, user_id: str = "default") -> Dict[str, Any]:

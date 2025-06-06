@@ -41,7 +41,7 @@ async def chat_completions(
         )
         
         # 更新请求中的消息
-        enhanced_request = request.copy()
+        enhanced_request = request.model_copy()
         enhanced_request.messages = enhanced_messages
         
         # 处理流式和非流式请求

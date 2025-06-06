@@ -142,7 +142,7 @@ class LLMProxyService:
         # 基础请求数据
         upstream_request = {
             "model": token_info.model_name,  # 使用 Token 中的模型名
-            "messages": [msg.dict() for msg in request.messages],
+            "messages": [msg.model_dump() for msg in request.messages],
         }
         
         # 根据 API 提供商决定支持的参数

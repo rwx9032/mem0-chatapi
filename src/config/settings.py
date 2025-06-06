@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     timeout: int = 30
     max_retries: int = 3
     
+    # PostHog 遥测配置
+    posthog_disabled: bool = True
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

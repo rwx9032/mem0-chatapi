@@ -16,20 +16,23 @@ class AuthService:
         pass
     
     @staticmethod
-    def parse_chat_token(token: str) -> TokenInfo:
-        """解析完整的 chat token: user_id|||baseurl|||model|||apikey"""
+    async def parse_chat_token(token: str) -> TokenInfo:
+        """解析完整的 chat token: user_token|||baseurl|||model|||apikey"""
+        from src.services.database_service import db_service
+        
         try:
             # 使用 ||| 作为分隔符避免模型名和URL中的短横线冲突
             parts = token.split('|||')
             
             if len(parts) != 4:
-                raise ValueError("Invalid token format. Expected: user_id|||baseurl|||model|||apikey")
+                raise ValueError("Invalid token format. Expected: user_token|||baseurl|||model|||apikey")
             
-            user_id, base_url, model_name, api_key = parts
+            user_token, base_url, model_name, api_key = parts
             
-            # 验证 user_id 格式
-            if not user_id.startswith('user_'):
-                raise ValueError("User ID must start with 'user_'")
+            # 通过user_token从数据库获取用户信息
+            user = await db_service.get_user_by_token(user_token)
+            if not user:
+                raise ValueError("Invalid user token - user not found in database")
             
             # 验证其他必要字段
             if not base_url.startswith(('http://', 'https://')):
@@ -42,7 +45,7 @@ class AuthService:
                 raise ValueError("API key cannot be empty")
             
             return TokenInfo(
-                env_token=user_id,
+                env_token=user.user_id,  # 使用数据库中的user_id
                 base_url=base_url,
                 model_name=model_name,
                 actual_token=api_key
@@ -112,7 +115,7 @@ class AuthService:
 # 依赖注入函数
 async def verify_chat_token(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> TokenInfo:
     """验证 Chat API token"""
-    return AuthService.parse_chat_token(credentials.credentials)
+    return await AuthService.parse_chat_token(credentials.credentials)
 
 
 async def verify_user_token(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> str:

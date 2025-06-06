@@ -10,6 +10,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import asyncio
 import aiosqlite
+import random
+import string
 
 from src.config.settings import settings
 
@@ -26,6 +28,10 @@ class UserData:
     first_seen: Optional[str] = None
     last_activity: Optional[str] = None
     total_requests: int = 0
+    # LLM配置信息
+    llm_base_url: Optional[str] = None
+    llm_model_name: Optional[str] = None
+    llm_api_key: Optional[str] = None
 
 
 @dataclass 
@@ -45,6 +51,12 @@ class DatabaseService:
     def __init__(self):
         self.db_path = settings.db_url.replace("sqlite:///", "")
         self._initialized = False
+    
+    def _generate_token(self) -> str:
+        """生成16字符的token，以'Mem'开头，后跟13个随机字符"""
+        chars = string.ascii_letters + string.digits
+        random_part = ''.join(random.choice(chars) for _ in range(13))
+        return f"Mem{random_part}"
     
     async def initialize(self):
         """初始化数据库"""
@@ -418,9 +430,20 @@ class DatabaseService:
                 )
             return None
     
-    async def create_user(self, username: str, user_token: str) -> UserData:
+    async def create_user(self, username: str, user_token: str = None) -> UserData:
         """创建新用户"""
         await self.initialize()
+        
+        # 如果没有提供token或token为空，自动生成一个
+        if not user_token or user_token.strip() == "":
+            user_token = self._generate_token()
+            # 确保生成的token是唯一的
+            async with aiosqlite.connect(self.db_path) as db:
+                while True:
+                    async with db.execute("SELECT user_id FROM users WHERE user_token = ?", (user_token,)) as cursor:
+                        if not await cursor.fetchone():
+                            break
+                    user_token = self._generate_token()
         
         # 生成user_id
         user_id = f"user_{username}"
@@ -431,10 +454,11 @@ class DatabaseService:
                 if await cursor.fetchone():
                     raise ValueError(f"Username '{username}' already exists")
             
-            # 检查token是否已存在
-            async with db.execute("SELECT user_id FROM users WHERE user_token = ?", (user_token,)) as cursor:
-                if await cursor.fetchone():
-                    raise ValueError(f"Token already exists")
+            # 检查token是否已存在（如果是用户提供的token）
+            if user_token:
+                async with db.execute("SELECT user_id FROM users WHERE user_token = ?", (user_token,)) as cursor:
+                    if await cursor.fetchone():
+                        raise ValueError(f"Token already exists")
             
             # 创建用户
             now = datetime.now().isoformat()
