@@ -40,6 +40,57 @@
 | `LLM_MODEL` | 使用的模型名称 | `gemini-2.0-flash-exp` |
 | `ADMIN_SECRET_KEY` | 管理员认证密钥 | `your-secret-key` |
 
+## 启动应用
+
+### 开发环境启动
+
+```bash
+# 启动集成了管理后台的服务（推荐）
+python start_servers.py
+
+# 或者使用开发脚本
+./run_dev.sh
+```
+
+### 生产环境启动
+
+```bash
+./run_prod.sh
+```
+
+启动后，服务将运行在 `http://localhost:8050`，你可以访问：
+
+- **API文档**: http://localhost:8050/docs
+- **管理后台**: http://localhost:8050/admin/
+- **健康检查**: http://localhost:8050/health
+- **聊天API**: http://localhost:8050/v1/chat/completions
+
+## 管理后台
+
+管理后台已集成到主应用中，访问 http://localhost:8050/admin/ 进行：
+
+- 👥 **用户管理**: 创建、删除用户，管理用户令牌
+- 🧠 **记忆管理**: 查看、删除用户记忆
+- 📊 **系统统计**: 查看用户数量、记忆条目等统计信息
+- 📤 **数据导出**: 导出所有数据为JSON格式
+- 🗑️ **数据清理**: 清空所有数据（危险操作）
+
+**认证**: 使用环境变量 `ADMIN_SECRET_KEY` 中设置的管理员密钥登录。
+
+## 安全检查
+
+在提交代码前，请运行安全检查脚本：
+
+```bash
+# 检查项目中是否有泄露的API密钥
+./check_secrets.sh
+```
+
+该脚本将检查：
+- Google/OpenAI API密钥泄露
+- 硬编码的敏感信息
+- .env文件是否被正确忽略
+
 ## 测试
 
 运行测试前，确保已正确配置环境变量：

@@ -90,8 +90,17 @@ async def root():
     """根端点"""
     return {
         "message": "Welcome to Mem0 Chat API",
-        "docs": "/docs",
-        "health": "/health",
+        "description": "OpenAI 兼容的聊天 API，集成 Mem0 记忆功能",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/health",
+            "admin": "/admin/",
+            "chat": "/v1/chat/completions"
+        },
+        "admin_info": {
+            "admin_panel": "/admin/",
+            "description": "管理用户、记忆和系统统计"
+        },
         "version": "1.0.0"
     }
 

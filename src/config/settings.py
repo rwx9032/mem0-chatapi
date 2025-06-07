@@ -25,10 +25,6 @@ class Settings(BaseSettings):
     # 认证配置
     admin_secret_key: str = "change-this-admin-secret-key"
     
-    # 管理后台配置
-    admin_host: str = "0.0.0.0"
-    admin_port: int = 8080
-    
     # 应用配置
     app_name: str = "Mem0 Chat API"
     debug: bool = False
