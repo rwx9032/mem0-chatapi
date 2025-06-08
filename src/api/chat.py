@@ -121,19 +121,15 @@ async def _stream_chat_completion(
 @router.get("/v1/models")
 async def list_models(token_info: TokenInfo = Depends(optional_chat_auth)):
     """
-    列出可用模型（兼容 OpenAI API）
+    列出可用模型（兼容 OpenAI API）- 透传到远程服务器
     """
     if not token_info:
         raise HTTPException(status_code=401, detail="Authentication required")
     
-    return {
-        "object": "list",
-        "data": [
-            {
-                "id": token_info.model_name,
-                "object": "model",
-                "created": int(time.time()),
-                "owned_by": "mem0-chatapi"
-            }
-        ]
-    }
+    try:
+        # 透传请求到远程服务器获取真实的模型列表
+        response = await llm_proxy_service.get_models(token_info)
+        return response
+    except Exception as e:
+        logger.error(f"Get models error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

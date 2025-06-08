@@ -83,7 +83,7 @@ class ErrorResponse(BaseModel):
 
 class TokenInfo(BaseModel):
     """Token 信息模型"""
-    env_token: str = Field(..., description="环境 Token")
+    env_token: str = Field(..., description="用户 Token（从数据库获取）")
     base_url: str = Field(..., description="API 基础 URL")
     model_name: Optional[str] = Field(default="", description="模型名称（可选，如为空则使用请求中的模型）")
     actual_token: str = Field(..., description="实际 API Token")

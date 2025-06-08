@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import logging
@@ -146,13 +146,13 @@ class OptionalChatAuth(HTTPBearer):
     def __init__(self):
         super().__init__(auto_error=False)
     
-    async def __call__(self, request) -> Optional[TokenInfo]:
+    async def __call__(self, request: Request) -> Optional[TokenInfo]:
         credentials = await super().__call__(request)
         if not credentials:
             return None
         
         try:
-            return AuthService.parse_chat_token(credentials.credentials)
+            return await AuthService.parse_chat_token(credentials.credentials)
         except HTTPException:
             return None
 

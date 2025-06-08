@@ -150,17 +150,19 @@ class RequiredTokenAuth(HTTPBearer):
         
         try:
             # 解析 Token
-            env_token, base_url, model_name, actual_token = self.token_parser.parse_token(credentials.credentials)
+            user_token, base_url, model_name, actual_token = self.token_parser.parse_token(credentials.credentials)
             
-            # 验证环境 Token
-            if not self.token_parser.validate_env_token(env_token, settings.auth_token):
+            # 验证用户token是否存在于数据库中
+            from src.services.database_service import db_service
+            user = await db_service.get_user_by_token(user_token)
+            if not user:
                 raise HTTPException(
                     status_code=401,
-                    detail="Invalid environment token"
+                    detail="Invalid user token"
                 )
             
             return TokenInfo(
-                env_token=env_token,
+                env_token=user_token,  # 这里是数据库中的用户token
                 base_url=base_url,
                 model_name=model_name,
                 actual_token=actual_token
