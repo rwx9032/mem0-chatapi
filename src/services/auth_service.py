@@ -17,17 +17,22 @@ class AuthService:
     
     @staticmethod
     async def parse_chat_token(token: str) -> TokenInfo:
-        """解析完整的 chat token: user_token|||baseurl|||model|||apikey"""
+        """解析完整的 chat token: user_token|||baseurl|||model|||apikey 或 user_token|||baseurl|||apikey"""
         from src.services.database_service import db_service
         
         try:
             # 使用 ||| 作为分隔符避免模型名和URL中的短横线冲突
             parts = token.split('|||')
             
-            if len(parts) != 4:
-                raise ValueError("Invalid token format. Expected: user_token|||baseurl|||model|||apikey")
-            
-            user_token, base_url, model_name, api_key = parts
+            if len(parts) == 4:
+                # 完整格式: user_token|||baseurl|||model|||apikey
+                user_token, base_url, model_name, api_key = parts
+            elif len(parts) == 3:
+                # 无模型格式: user_token|||baseurl|||apikey
+                user_token, base_url, api_key = parts
+                model_name = ""  # 空模型名，将使用请求中的模型
+            else:
+                raise ValueError("Invalid token format. Expected: user_token|||baseurl|||model|||apikey or user_token|||baseurl|||apikey")
             
             # 通过user_token从数据库获取用户信息
             user = await db_service.get_user_by_token(user_token)
@@ -38,8 +43,9 @@ class AuthService:
             if not base_url.startswith(('http://', 'https://')):
                 raise ValueError("Base URL must be a valid HTTP(S) URL")
             
-            if not model_name.strip():
-                raise ValueError("Model name cannot be empty")
+            # 模型名现在是可选的
+            if model_name and not model_name.strip():
+                model_name = ""  # 确保空白模型名被标准化为空字符串
             
             if not api_key.strip():
                 raise ValueError("API key cannot be empty")

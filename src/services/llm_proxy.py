@@ -139,9 +139,16 @@ class LLMProxyService:
     def _build_upstream_request(self, request: ChatCompletionRequest, token_info: TokenInfo) -> Dict[str, Any]:
         """构建上游 API 请求"""
         
+        # 决定使用哪个模型：优先使用请求中的模型，如果 Token 中有模型且请求中没有则使用 Token 中的
+        model_name = request.model
+        if not model_name and token_info.model_name:
+            model_name = token_info.model_name
+        elif not model_name:
+            raise Exception("No model specified in request or token")
+        
         # 基础请求数据
         upstream_request = {
-            "model": token_info.model_name,  # 使用 Token 中的模型名
+            "model": model_name,  # 使用决定的模型名
             "messages": [msg.model_dump() for msg in request.messages],
         }
         
