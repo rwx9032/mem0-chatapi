@@ -76,12 +76,38 @@ class MemoryService:
             # 转换为字典格式
             message_dicts = [msg.model_dump() for msg in messages]
             
-            # 保存对话
+            # 保存对话到Mem0
             await self.memory_manager.save_conversation(
                 message_dicts, response_content, user_id
             )
             
-            logger.info(f"Saved conversation memory for user {user_id}")
+            # 同时保存到SQLite数据库
+            # 导入数据库服务
+            from src.services.database_service import db_service
+            import uuid
+            
+            # 构建对话摘要作为记忆内容
+            user_messages = [msg for msg in messages if msg.role == "user"]
+            if user_messages:
+                latest_user_msg = user_messages[-1].content
+                if len(user_messages) == 1:
+                    conversation_summary = f"用户问: {latest_user_msg}\nAI答: {response_content}"
+                else:
+                    conversation_summary = f"在多轮对话中，用户询问: {latest_user_msg}\nAI回复: {response_content}"
+                
+                # 生成记忆ID并保存到数据库
+                memory_id = f"conv_{uuid.uuid4().hex[:12]}"
+                await db_service.save_memory(
+                    user_id=user_id,
+                    memory_id=memory_id,
+                    content=conversation_summary,
+                    metadata={"source": "conversation", "type": "auto_save"}
+                )
+                
+                # 更新用户活动
+                await db_service.update_user_activity(user_id)
+            
+            logger.info(f"Saved conversation memory to both Mem0 and database for user {user_id}")
             
         except Exception as e:
             logger.error(f"Error saving conversation memory: {e}")
