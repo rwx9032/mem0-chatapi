@@ -128,6 +128,77 @@ class MemoryManager:
             logger.error(f"Error retrieving all memories for user {user_id}: {e}")
             return []
     
+    async def get_all_memories_with_ids(self, user_id: str = "default") -> List[Dict[str, Any]]:
+        """
+        获取所有记忆（包含ID信息）
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            所有记忆列表，包含ID和内容
+        """
+        try:
+            logger.info(f"Calling Mem0 client.get_all with user_id: {user_id}")
+            memories = self.client.get_all(user_id=user_id)
+            logger.info(f"Mem0 client returned: {type(memories)}, content: {memories}")
+            
+            # 处理返回格式
+            if isinstance(memories, dict) and "results" in memories:
+                result = []
+                for memory in memories["results"]:
+                    result.append({
+                        "id": memory.get("id"),
+                        "content": memory.get("memory", ""),
+                        "user_id": user_id
+                    })
+                logger.info(f"Extracted {len(result)} memories with IDs from dict format")
+                return result
+            elif isinstance(memories, list):
+                # 如果是列表格式，尝试提取ID和内容
+                result = []
+                for i, memory in enumerate(memories):
+                    if isinstance(memory, dict):
+                        result.append({
+                            "id": memory.get("id", f"mem_{i}"),
+                            "content": memory.get("memory", memory.get("content", str(memory))),
+                            "user_id": user_id
+                        })
+                    else:
+                        result.append({
+                            "id": f"mem_{i}",
+                            "content": str(memory),
+                            "user_id": user_id
+                        })
+                logger.info(f"Got {len(result)} memories with generated IDs in list format")
+                return result
+            else:
+                logger.warning(f"Unexpected memory format: {type(memories)}, content: {memories}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error retrieving all memories with IDs for user {user_id}: {e}")
+            return []
+
+    async def delete_memory_by_id(self, memory_id: str, user_id: str = "default") -> Dict[str, Any]:
+        """
+        删除特定记忆
+        
+        Args:
+            memory_id: 记忆ID
+            user_id: 用户ID
+            
+        Returns:
+            删除结果
+        """
+        try:
+            result = self.client.delete(memory_id=memory_id)
+            logger.info(f"Successfully deleted memory {memory_id} for user {user_id}")
+            return {"success": True, "result": result, "memory_id": memory_id}
+        except Exception as e:
+            logger.error(f"Error deleting memory {memory_id}: {e}")
+            return {"success": False, "error": str(e), "memory_id": memory_id}
+
     async def enhance_context_with_memories(
         self, 
         messages: List[Dict[str, str]], 

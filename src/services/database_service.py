@@ -513,6 +513,19 @@ class DatabaseService:
             
             return result.rowcount > 0
 
+    async def update_user_memory_count(self, user_id: str, memory_count: int) -> bool:
+        """更新用户记忆计数"""
+        await self.initialize()
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            result = await db.execute(
+                "UPDATE users SET memory_count = ? WHERE user_id = ?", 
+                (memory_count, user_id)
+            )
+            await db.commit()
+            
+            return result.rowcount > 0
+
 
 # 创建全局数据库服务实例
 db_service = DatabaseService()

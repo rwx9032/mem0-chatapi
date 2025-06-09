@@ -195,6 +195,42 @@ class MemoryService:
         except Exception as e:
             logger.error(f"Error deleting all memories: {e}")
             return {"success": False, "error": str(e)}
+    
+    async def get_user_memories_with_ids(self, user_id: str = "default") -> List[Dict[str, Any]]:
+        """
+        获取用户记忆（包含ID信息）
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            记忆列表，包含ID和内容
+        """
+        try:
+            memories = await self.memory_manager.get_all_memories_with_ids(user_id)
+            return memories
+        except Exception as e:
+            logger.error(f"Error retrieving memories with IDs: {e}")
+            return []
+
+    async def delete_memory_by_id(self, memory_id: str, user_id: str = "default") -> Dict[str, Any]:
+        """
+        删除特定记忆
+        
+        Args:
+            memory_id: 记忆ID
+            user_id: 用户ID
+            
+        Returns:
+            删除结果
+        """
+        try:
+            result = await self.memory_manager.delete_memory_by_id(memory_id, user_id)
+            logger.info(f"Deleted memory {memory_id} for user {user_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Error deleting memory {memory_id}: {e}")
+            return {"success": False, "error": str(e)}
 
 
 # 全局记忆服务实例
