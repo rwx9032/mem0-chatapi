@@ -19,9 +19,11 @@ class Settings(BaseSettings):
     
     # 数据库配置
     database_url: Optional[str] = None
+    db_type: str = "sqlite"
+    db_url: str = "sqlite:///./memories.db"
     
-    # 环境Token验证 (用于验证客户端请求中的 envtoken 部分)
-    auth_token: Optional[str] = None
+    # 认证配置
+    admin_secret_key: str = "change-this-admin-secret-key"
     
     # 应用配置
     app_name: str = "Mem0 Chat API"
@@ -37,6 +39,9 @@ class Settings(BaseSettings):
     # 其他配置
     timeout: int = 30
     max_retries: int = 3
+    
+    # PostHog 遥测配置
+    posthog_disabled: bool = True
     
     class Config:
         env_file = ".env"

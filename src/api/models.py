@@ -8,6 +8,11 @@ class ChatMessage(BaseModel):
     content: str = Field(..., description="消息内容")
 
 
+class SaveMemoryRequest(BaseModel):
+    """保存记忆请求模型"""
+    content: str = Field(..., description="要保存的记忆内容")
+
+
 class ChatCompletionRequest(BaseModel):
     """Chat Completion 请求模型"""
     model: str = Field(..., description="使用的模型名称")
@@ -78,9 +83,9 @@ class ErrorResponse(BaseModel):
 
 class TokenInfo(BaseModel):
     """Token 信息模型"""
-    env_token: str = Field(..., description="环境 Token")
+    env_token: str = Field(..., description="用户 Token（从数据库获取）")
     base_url: str = Field(..., description="API 基础 URL")
-    model_name: str = Field(..., description="模型名称")
+    model_name: Optional[str] = Field(default="", description="模型名称（可选，如为空则使用请求中的模型）")
     actual_token: str = Field(..., description="实际 API Token")
 
 

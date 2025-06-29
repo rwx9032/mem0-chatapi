@@ -57,15 +57,31 @@ src/
 
 ## Token 格式
 
-Token 格式: `envtoken-baseurl-modelname-token`
+Token 支持两种格式：
 
-示例: `IamSettedInEnvFile-https://example.com-gemini-2.0-flash-sk-1145141919810`
+### 完整格式（包含模型名）
+`envtoken|||baseurl|||modelname|||token`
+
+示例: `IamSettedInEnvFile|||https://example.com|||gemini-2.0-flash|||sk-1145141919810`
 
 解析后:
 - env token: `IamSettedInEnvFile`
 - base url: `https://example.com`
 - model name: `gemini-2.0-flash`
 - actual token: `sk-1145141919810`
+
+### 简化格式（模型名可选）
+`envtoken|||baseurl|||token`
+
+示例: `IamSettedInEnvFile|||https://example.com|||sk-1145141919810`
+
+解析后:
+- env token: `IamSettedInEnvFile`
+- base url: `https://example.com`
+- model name: 使用请求中的 `model` 参数
+- actual token: `sk-1145141919810`
+
+**注意**: 当使用简化格式时，必须在请求体中指定 `model` 参数。
 
 ## API 端点
 

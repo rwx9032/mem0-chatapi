@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 import logging
-from memory.manager import memory_manager
-from api.models import ChatMessage
+from src.memory.manager import memory_manager
+from src.api.models import ChatMessage
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class MemoryService:
         
         try:
             # 转换为字典格式
-            message_dicts = [msg.dict() for msg in messages]
+            message_dicts = [msg.model_dump() for msg in messages]
             
             # 使用记忆管理器增强上下文
             enhanced_message_dicts = await self.memory_manager.enhance_context_with_memories(
@@ -74,14 +74,40 @@ class MemoryService:
         
         try:
             # 转换为字典格式
-            message_dicts = [msg.dict() for msg in messages]
+            message_dicts = [msg.model_dump() for msg in messages]
             
-            # 保存对话
+            # 保存对话到Mem0
             await self.memory_manager.save_conversation(
                 message_dicts, response_content, user_id
             )
             
-            logger.info(f"Saved conversation memory for user {user_id}")
+            # 同时保存到SQLite数据库
+            # 导入数据库服务
+            from src.services.database_service import db_service
+            import uuid
+            
+            # 构建对话摘要作为记忆内容
+            user_messages = [msg for msg in messages if msg.role == "user"]
+            if user_messages:
+                latest_user_msg = user_messages[-1].content
+                if len(user_messages) == 1:
+                    conversation_summary = f"用户问: {latest_user_msg}\nAI答: {response_content}"
+                else:
+                    conversation_summary = f"在多轮对话中，用户询问: {latest_user_msg}\nAI回复: {response_content}"
+                
+                # 生成记忆ID并保存到数据库
+                memory_id = f"conv_{uuid.uuid4().hex[:12]}"
+                await db_service.save_memory(
+                    user_id=user_id,
+                    memory_id=memory_id,
+                    content=conversation_summary,
+                    metadata={"source": "conversation", "type": "auto_save"}
+                )
+                
+                # 更新用户活动
+                await db_service.update_user_activity(user_id)
+            
+            logger.info(f"Saved conversation memory to both Mem0 and database for user {user_id}")
             
         except Exception as e:
             logger.error(f"Error saving conversation memory: {e}")
@@ -168,6 +194,42 @@ class MemoryService:
             return result
         except Exception as e:
             logger.error(f"Error deleting all memories: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def get_user_memories_with_ids(self, user_id: str = "default") -> List[Dict[str, Any]]:
+        """
+        获取用户记忆（包含ID信息）
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            记忆列表，包含ID和内容
+        """
+        try:
+            memories = await self.memory_manager.get_all_memories_with_ids(user_id)
+            return memories
+        except Exception as e:
+            logger.error(f"Error retrieving memories with IDs: {e}")
+            return []
+
+    async def delete_memory_by_id(self, memory_id: str, user_id: str = "default") -> Dict[str, Any]:
+        """
+        删除特定记忆
+        
+        Args:
+            memory_id: 记忆ID
+            user_id: 用户ID
+            
+        Returns:
+            删除结果
+        """
+        try:
+            result = await self.memory_manager.delete_memory_by_id(memory_id, user_id)
+            logger.info(f"Deleted memory {memory_id} for user {user_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Error deleting memory {memory_id}: {e}")
             return {"success": False, "error": str(e)}
 
 

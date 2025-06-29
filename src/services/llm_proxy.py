@@ -2,7 +2,7 @@ import httpx
 from typing import Dict, Any, List, AsyncGenerator
 import json
 import logging
-from api.models import (
+from src.api.models import (
     ChatCompletionRequest, 
     ChatCompletionResponse, 
     ChatMessage,
@@ -136,13 +136,60 @@ class LLMProxyService:
             }
             yield f"data: {json.dumps(error_data)}\n\n"
     
+    async def get_models(self, token_info: TokenInfo) -> Dict[str, Any]:
+        """
+        获取远程服务器的模型列表
+        
+        Args:
+            token_info: Token 信息
+            
+        Returns:
+            模型列表响应
+        """
+        try:
+            # 发送请求到上游 API
+            url = f"{token_info.base_url.rstrip('/')}/models"
+            
+            logger.info(f"Sending models request to upstream API: {url}")
+            
+            response = await self.client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {token_info.actual_token}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            response.raise_for_status()
+            
+            # 解析响应
+            response_data = response.json()
+            
+            logger.info(f"Received models response: {len(response_data.get('data', []))} models")
+            
+            return response_data
+            
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Upstream API models error: {e.response.status_code} - {e.response.text}")
+            raise Exception(f"Upstream API error: {e.response.status_code}")
+        except Exception as e:
+            logger.error(f"LLM proxy models error: {e}")
+            raise Exception(f"LLM proxy error: {str(e)}")
+
     def _build_upstream_request(self, request: ChatCompletionRequest, token_info: TokenInfo) -> Dict[str, Any]:
         """构建上游 API 请求"""
         
+        # 决定使用哪个模型：优先使用请求中的模型，如果 Token 中有模型且请求中没有则使用 Token 中的
+        model_name = request.model
+        if not model_name and token_info.model_name:
+            model_name = token_info.model_name
+        elif not model_name:
+            raise Exception("No model specified in request or token")
+        
         # 基础请求数据
         upstream_request = {
-            "model": token_info.model_name,  # 使用 Token 中的模型名
-            "messages": [msg.dict() for msg in request.messages],
+            "model": model_name,  # 使用决定的模型名
+            "messages": [msg.model_dump() for msg in request.messages],
         }
         
         # 根据 API 提供商决定支持的参数

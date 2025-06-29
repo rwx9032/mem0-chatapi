@@ -1,7 +1,7 @@
 from mem0 import Memory
 import os
 from typing import Optional
-from config.settings import settings
+from src.config.settings import settings
 
 
 class Mem0Client:
@@ -44,6 +44,9 @@ class Mem0Client:
             }
         }
         
+        # 禁用 PostHog 遥测
+        config["disable_telemetry"] = True
+        
         return config
     
     def _get_llm_config(self) -> Optional[dict]:
@@ -83,7 +86,7 @@ class Mem0Client:
                 }
             }
             
-            # 设置 Gemini API 密钥
+            # 设置 Gemini API 密钥（LLM用GEMINI_API_KEY）
             if settings.llm_api_key:
                 os.environ["GEMINI_API_KEY"] = settings.llm_api_key
             
@@ -101,6 +104,7 @@ class Mem0Client:
             
             if settings.llm_api_key:
                 os.environ["GOOGLE_API_KEY"] = settings.llm_api_key
+                os.environ["GEMINI_API_KEY"] = settings.llm_api_key
             
             return config
         
@@ -151,8 +155,9 @@ class Mem0Client:
                 }
             }
             
+            # 设置 Google API 密钥（Embedding用GOOGLE_API_KEY）
             if settings.llm_api_key:
-                os.environ["GEMINI_API_KEY"] = settings.llm_api_key
+                os.environ["GOOGLE_API_KEY"] = settings.llm_api_key
             
             return config
         
@@ -167,6 +172,7 @@ class Mem0Client:
             
             if settings.llm_api_key:
                 os.environ["GOOGLE_API_KEY"] = settings.llm_api_key
+                os.environ["GEMINI_API_KEY"] = settings.llm_api_key
             
             return config
         

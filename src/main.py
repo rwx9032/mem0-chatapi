@@ -5,17 +5,25 @@ import time
 import logging
 import asyncio
 import uvicorn
+import os
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# 强制加载环境变量
+load_dotenv('.env', override=True)
 
 # 导入配置和工具
-from config.settings import settings
-from utils.helpers import setup_logging, get_current_timestamp
+from src.config.settings import settings
+from src.utils.helpers import setup_logging, get_current_timestamp
 
 # 导入 API 路由
-from api.chat import router as chat_router
+from src.api.chat import router as chat_router
+from src.api.memory import router as memory_router
+from src.api.admin import router as admin_router
 
 # 导入服务
-from services.llm_proxy import llm_proxy_service
+from src.services.llm_proxy import llm_proxy_service
+from src.services.database_service import db_service
 
 
 # 设置日志
@@ -31,7 +39,11 @@ async def lifespan(app: FastAPI):
     logger.info(f"LLM Provider: {settings.llm_provider}")
     
     try:
-        # 这里可以添加启动时的初始化逻辑
+        # 初始化数据库
+        logger.info("Initializing database...")
+        await db_service.initialize()
+        logger.info("Database initialized successfully")
+        
         yield
     finally:
         # 清理资源
@@ -58,6 +70,8 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(chat_router, tags=["Chat API"])
+app.include_router(memory_router, tags=["Memory API"])
+app.include_router(admin_router, tags=["Admin API"])
 
 
 @app.get("/health")
@@ -76,8 +90,17 @@ async def root():
     """根端点"""
     return {
         "message": "Welcome to Mem0 Chat API",
-        "docs": "/docs",
-        "health": "/health",
+        "description": "OpenAI 兼容的聊天 API，集成 Mem0 记忆功能",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/health",
+            "admin": "/admin/",
+            "chat": "/v1/chat/completions"
+        },
+        "admin_info": {
+            "admin_panel": "/admin/",
+            "description": "管理用户、记忆和系统统计"
+        },
         "version": "1.0.0"
     }
 
